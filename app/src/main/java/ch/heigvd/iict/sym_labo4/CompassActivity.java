@@ -94,14 +94,11 @@ public class CompassActivity extends AppCompatActivity implements SensorEventLis
 
         // Calculate rotation matrix with updated data
         SensorManager.getRotationMatrix(
-                rotationMatrix,
+                opglr.swapRotMatrix(rotationMatrix),
                 null,
                 gravity,
                 geomagnetic
         );
-
-        // We update current matrix to be displayed
-        rotationMatrix = opglr.swapRotMatrix(rotationMatrix);
     }
 
     @Override
