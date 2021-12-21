@@ -1,50 +1,111 @@
 package ch.heigvd.iict.sym_labo4;
 
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.opengl.GLSurfaceView;
 import androidx.appcompat.app.AppCompatActivity;
+
+import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
 
+import java.util.Arrays;
+import java.util.logging.Logger;
+
 import ch.heigvd.iict.sym_labo4.gl.OpenGLRenderer;
 
-public class CompassActivity extends AppCompatActivity {
+public class CompassActivity extends AppCompatActivity implements SensorEventListener {
 
-    //opengl
-    private OpenGLRenderer  opglr           = null;
-    private GLSurfaceView   m3DView         = null;
+    // Opengl
+    private OpenGLRenderer opglr = null;
+    private GLSurfaceView m3DView = null;
+    private SensorManager mSensorManager = null;
+    private Sensor mAccelerometer = null;
+    private Sensor mMagneticField = null;
+    private float[] rotationMatrix = new float[16];
+    private float[] gravity = new float[3];
+    private float[] geomagnetic = new float[3];
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // we need fullscreen
+        // We need fullscreen
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
-        // we initiate the view
+        // We initiate the view
         setContentView(R.layout.activity_compass);
 
-        //we create the renderer
+        // We create the renderer
         this.opglr = new OpenGLRenderer(getApplicationContext());
 
-        // link to GUI
+        // Link to GUI
         this.m3DView = findViewById(R.id.compass_opengl);
 
-        //init opengl surface view
+        // Init opengl surface view
         this.m3DView.setRenderer(this.opglr);
 
+        // Init sensor manager and sensors
+        this.mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        this.mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        this.mMagneticField = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 
+        // Fill arrays for future calculation
+        Arrays.fill(rotationMatrix, 0);
+        Arrays.fill(gravity, 0);
+        Arrays.fill(geomagnetic, 0);
     }
 
-    /*
-     TODO
-        your activity need to register to accelerometer and magnetometer sensors' updates
-        then you may want to call
-        opglr.swapRotMatrix()
-        with the 4x4 rotation matrix, every time a new matrix is computed
-        more information on rotation matrix can be found online:
-        https://developer.android.com/reference/android/hardware/SensorManager.html#getRotationMatrix(float[],%20float[],%20float[],%20float[])
-    */
+    @Override
+    protected void onResume() {
+        super.onResume();
 
+        // Register accelerometer
+        mSensorManager.registerListener(this,
+                mAccelerometer,
+                SensorManager.SENSOR_DELAY_NORMAL);
+        // Register magnetic field
+        mSensorManager.registerListener(this,
+                mMagneticField,
+                SensorManager.SENSOR_DELAY_NORMAL);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Unregister all sensors when paused
+        mSensorManager.unregisterListener(this);
+    }
+
+
+    @Override
+    public void onSensorChanged(SensorEvent sensorEvent) {
+        // Update corresponding sensor data
+        if (sensorEvent.sensor.getName().equals(mAccelerometer.getName())) {
+            gravity = sensorEvent.values;
+        } else if (sensorEvent.sensor.getName().equals(mMagneticField.getName())) {
+            geomagnetic = sensorEvent.values;
+        }
+
+        // Calculate rotation matrix with updated data
+        SensorManager.getRotationMatrix(
+                rotationMatrix,
+                null,
+                gravity,
+                geomagnetic
+        );
+
+        // We update current matrix to be displayed
+        rotationMatrix = opglr.swapRotMatrix(rotationMatrix);
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int i) {
+
+    }
 }
