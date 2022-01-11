@@ -120,6 +120,8 @@ public class BleActivity extends BaseTemplateActivity {
 
         //ble events
         this.bleViewModel.isConnected().observe(this, (isConnected) -> updateGui());
+
+        this.bleViewModel.buttonClickedChanged().observe(this, (clickedButton) -> updateClickedButtons());
     }
 
     @Override
@@ -188,6 +190,13 @@ public class BleActivity extends BaseTemplateActivity {
                 "Temperature: %.1f°C",
                 this.bleViewModel.temperatureChanged().getValue() / 10f)
         );
+    }
+
+    private void updateClickedButtons() {
+        this.clickedButtons.setText(String.format(
+                "Buttons clicked: %d times",
+                this.bleViewModel.buttonClickedChanged().getValue()
+        ));
     }
 
     //this method needs user grant localisation and/or bluetooth permissions, our demo app is requesting them on MainActivity

@@ -21,6 +21,10 @@ import java.util.TimerTask;
 import java.util.UUID;
 
 import no.nordicsemi.android.ble.BleManager;
+import no.nordicsemi.android.ble.ReadRequest;
+import no.nordicsemi.android.ble.ValueChangedCallback;
+import no.nordicsemi.android.ble.callback.FailCallback;
+import no.nordicsemi.android.ble.callback.SuccessCallback;
 import no.nordicsemi.android.ble.data.Data;
 import no.nordicsemi.android.ble.observer.ConnectionObserver;
 
@@ -45,6 +49,9 @@ public class BleOperationsViewModel extends AndroidViewModel {
 
     private final MutableLiveData<Integer> mTemperature = new MutableLiveData<>(0);
     public LiveData<Integer> temperatureChanged() { return mTemperature; }
+
+    private final MutableLiveData<Integer> mButtonClicked = new MutableLiveData<>(0);
+    public LiveData<Integer> buttonClickedChanged() { return mButtonClicked; }
 
     //Services and Characteristics of the SYM Pixl
     private BluetoothGattService timeService = null, symService = null;
@@ -193,6 +200,21 @@ public class BleOperationsViewModel extends AndroidViewModel {
                             Dans notre cas il s'agit de s'enregistrer pour recevoir les notifications proposées par certaines
                             caractéristiques, on en profitera aussi pour mettre en place les callbacks correspondants.
                          */
+                        //mConnection.setCharacteristicNotification(buttonClickChar, true);
+
+                        setNotificationCallback(buttonClickChar).with(
+                                (BluetoothDevice b, Data d) ->
+                                        mButtonClicked.setValue(d.getIntValue(Data.FORMAT_SINT8, 0))
+                        );
+                        beginAtomicRequestQueue()
+                                .add(enableNotifications(buttonClickChar)
+                                        .fail((device, status) -> {
+                                            Log.e(TAG, "Could not subscribe: " + status);
+                                        }))
+                                .done(device -> {
+                                    Log.d(TAG, "Subscribed!");
+                                })
+                                .enqueue();
                     }
 
                     @Override
@@ -207,6 +229,9 @@ public class BleOperationsViewModel extends AndroidViewModel {
                         buttonClickChar = null;
                     }
 
+                    public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+                        Log.d("testtest", "reee");
+                    }
                 };
             }
             return mGattCallback;
@@ -250,13 +275,12 @@ public class BleOperationsViewModel extends AndroidViewModel {
                     (BluetoothDevice b, Data d) ->
                     mTemperature.setValue(d.getIntValue(Data.FORMAT_UINT16, 0))
             ).enqueue();
-            /*  TODO
-                on peut effectuer ici la lecture de la caractéristique température
-                la valeur récupérée sera envoyée à l'activité en utilisant le mécanisme
-                des MutableLiveData
-                On placera des méthodes similaires pour les autres opérations
-            */
-            return true; //FIXME
+            return true;
+        }
+
+        public boolean notifyButtonClicked() {
+            Log.d("testtest", "clicked");
+            return true;
         }
 
     }
