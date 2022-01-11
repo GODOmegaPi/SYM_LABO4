@@ -4,20 +4,27 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.ParcelUuid;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 
 import androidx.lifecycle.ViewModelProvider;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 import ch.heigvd.iict.sym_labo4.abstractactivies.BaseTemplateActivity;
 import ch.heigvd.iict.sym_labo4.adapters.ResultsAdapter;
@@ -36,6 +43,8 @@ public class BleActivity extends BaseTemplateActivity {
     //system services
     private BluetoothAdapter bluetoothAdapter = null;
 
+    public int test = 0;
+
     //view model
     private BleOperationsViewModel bleViewModel = null;
 
@@ -45,6 +54,10 @@ public class BleActivity extends BaseTemplateActivity {
 
     private ListView scanResults = null;
     private TextView emptyScanResults = null;
+
+    private TextView temperature = null;
+    private Button temperatureButton = null;
+    private TextView clickedButtons = null;
 
     //menu elements
     private MenuItem scanMenuBtn = null;
@@ -75,6 +88,10 @@ public class BleActivity extends BaseTemplateActivity {
         this.scanResults = findViewById(R.id.ble_scanresults);
         this.emptyScanResults = findViewById(R.id.ble_scanresults_empty);
 
+        this.temperature = findViewById(R.id.ble_temperature);
+        this.temperatureButton = findViewById(R.id.ble_temperature_btn);
+        this.clickedButtons = findViewById(R.id.ble_clicked_buttons);
+
         //manage scanned item
         this.scanResultsAdapter = new ResultsAdapter(this);
         this.scanResults.setAdapter(this.scanResultsAdapter);
@@ -95,9 +112,14 @@ public class BleActivity extends BaseTemplateActivity {
             });
         });
 
+        this.temperatureButton.setOnClickListener(view -> {
+            if (this.bleViewModel.readTemperature()) {
+                this.bleViewModel.temperatureChanged().observe(this, (temperature) -> updateTemperature());
+            }
+        });
+
         //ble events
         this.bleViewModel.isConnected().observe(this, (isConnected) -> updateGui());
-
     }
 
     @Override
@@ -161,8 +183,16 @@ public class BleActivity extends BaseTemplateActivity {
         }
     }
 
+    private void updateTemperature() {
+        this.temperature.setText(String.format(
+                "Temperature: %.1f°C",
+                this.bleViewModel.temperatureChanged().getValue() / 10f)
+        );
+    }
+
     //this method needs user grant localisation and/or bluetooth permissions, our demo app is requesting them on MainActivity
     private void scanLeDevice(final boolean enable) {
+        List<ScanFilter> filters = new ArrayList<>();
         final BluetoothLeScanner bluetoothScanner = bluetoothAdapter.getBluetoothLeScanner();
         if (enable) {
 
@@ -173,13 +203,15 @@ public class BleActivity extends BaseTemplateActivity {
 
             //we scan for any BLE device
             //we don't filter them based on advertised services...
-            // TODO ajouter un filtre pour n'afficher que les devices proposant
-            // le service "SYM" (UUID: "3c0a1000-281d-4b48-b2a7-f15579a1c38f")
+            ScanFilter filter = new ScanFilter.Builder()
+                    .setServiceUuid(new ParcelUuid(UUID.fromString("3c0a1000-281d-4b48-b2a7-f15579a1c38f")))
+                    .build();
+            filters.add(filter);
 
             //reset display
             scanResultsAdapter.clear();
 
-            bluetoothScanner.startScan(null, builderScanSettings.build(), leScanCallback);
+            bluetoothScanner.startScan(filters, builderScanSettings.build(), leScanCallback);
             Log.d(TAG, "Start scanning...");
             isScanning = true;
 

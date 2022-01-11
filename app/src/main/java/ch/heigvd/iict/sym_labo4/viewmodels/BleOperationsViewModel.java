@@ -1,6 +1,7 @@
 package ch.heigvd.iict.sym_labo4.viewmodels;
 
 import android.app.Application;
+import android.app.Service;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
@@ -14,7 +15,13 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import java.util.Arrays;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.UUID;
+
 import no.nordicsemi.android.ble.BleManager;
+import no.nordicsemi.android.ble.data.Data;
 import no.nordicsemi.android.ble.observer.ConnectionObserver;
 
 /**
@@ -36,9 +43,17 @@ public class BleOperationsViewModel extends AndroidViewModel {
         return mIsConnected;
     }
 
+    private final MutableLiveData<Integer> mTemperature = new MutableLiveData<>(0);
+    public LiveData<Integer> temperatureChanged() { return mTemperature; }
+
     //Services and Characteristics of the SYM Pixl
     private BluetoothGattService timeService = null, symService = null;
     private BluetoothGattCharacteristic currentTimeChar = null, integerChar = null, temperatureChar = null, buttonClickChar = null;
+
+    private final String timeServiceShortUUID = "1805";
+    private final String[] timeServiceCharacteristicShortUUID = {"2a2b"};
+    private final String symServiceShort = "1000";
+    private final String[] symServiceCharacteristicShortUUID = {"1001", "1002", "1003"};
 
     public BleOperationsViewModel(Application application) {
         super(application);
@@ -76,6 +91,7 @@ public class BleOperationsViewModel extends AndroidViewModel {
         d'interagir avec le périphérique depuis l'activité
      */
 
+    // FIXME I have no idea on how to use this
     public boolean readTemperature() {
         if(!isConnected().getValue() || temperatureChar == null) return false;
         return ble.readTemperature();
@@ -153,7 +169,20 @@ public class BleOperationsViewModel extends AndroidViewModel {
                           caractéristiques (déclarés en lignes 40 et 41)
                         */
 
-                        return false; //FIXME si tout est OK, on retourne true, sinon la librairie appelera la méthode onDeviceDisconnected() avec le flag REASON_NOT_SUPPORTED
+                        boolean hasTimeService = hasServiceAndCharacteristics(gatt, timeServiceShortUUID, timeServiceCharacteristicShortUUID, false);
+                        if (hasTimeService) {
+                            timeService = gatt.getService(UUID.fromString(getLongUUIDStandard(timeServiceShortUUID)));
+                            currentTimeChar = timeService.getCharacteristic(UUID.fromString(getLongUUIDStandard(timeServiceCharacteristicShortUUID[0])));
+                        }
+                        boolean hasSymService = hasServiceAndCharacteristics(gatt, symServiceShort, symServiceCharacteristicShortUUID, true);
+                        if (hasSymService) {
+                            symService = gatt.getService(UUID.fromString(getLongUUIDSYM(symServiceShort)));
+                            integerChar = symService.getCharacteristic(UUID.fromString(getLongUUIDSYM(symServiceCharacteristicShortUUID[0])));
+                            temperatureChar = symService.getCharacteristic(UUID.fromString(getLongUUIDSYM(symServiceCharacteristicShortUUID[1])));
+                            buttonClickChar = symService.getCharacteristic(UUID.fromString(getLongUUIDSYM(symServiceCharacteristicShortUUID[2])));
+                        }
+
+                        return hasTimeService && hasSymService;
                     }
 
                     @Override
@@ -183,14 +212,51 @@ public class BleOperationsViewModel extends AndroidViewModel {
             return mGattCallback;
         }
 
+        private String getLongUUIDStandard(String shortUUID) {
+            return String.format("0000%s-0000-1000-8000-00805f9b34fb", shortUUID);
+        }
+
+        private String getLongUUIDSYM(String shortUUID) {
+            return String.format("3c0a%s-281d-4b48-b2a7-f15579a1c38f", shortUUID);
+        }
+
+        private boolean hasServiceAndCharacteristics(BluetoothGatt services, String shortServiceUUID, String[] shortCharacteristicsUUID, boolean symService) {
+            boolean hasService = false;
+            for (BluetoothGattService s : services.getServices()) {
+                if(s.getUuid().toString().equals(symService ?
+                        getLongUUIDSYM(shortServiceUUID) :
+                        getLongUUIDStandard(shortServiceUUID))) {
+                    hasService = true;
+                    for (String shortCharacteristicUUID : shortCharacteristicsUUID) {
+                        boolean hasCharacteristic = false;
+                        for (BluetoothGattCharacteristic c : s.getCharacteristics()) {
+                            if (c.getUuid().toString().equals(symService ?
+                                    getLongUUIDSYM(shortCharacteristicUUID) :
+                                    getLongUUIDStandard(shortCharacteristicUUID))) {
+                                hasCharacteristic = true;
+                            }
+                        }
+                        if (!hasCharacteristic) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return hasService;
+        }
+
         public boolean readTemperature() {
+            readCharacteristic(temperatureChar).with(
+                    (BluetoothDevice b, Data d) ->
+                    mTemperature.setValue(d.getIntValue(Data.FORMAT_UINT16, 0))
+            ).enqueue();
             /*  TODO
                 on peut effectuer ici la lecture de la caractéristique température
                 la valeur récupérée sera envoyée à l'activité en utilisant le mécanisme
                 des MutableLiveData
                 On placera des méthodes similaires pour les autres opérations
             */
-            return false; //FIXME
+            return true; //FIXME
         }
 
     }
