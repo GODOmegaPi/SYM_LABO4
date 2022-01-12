@@ -7,15 +7,20 @@ import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
 import android.content.Context;
+import android.os.Build;
 import android.text.format.Time;
 import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import java.nio.ByteBuffer;
+import java.time.LocalDateTime;
+import java.time.Month;
 import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -54,8 +59,8 @@ public class BleOperationsViewModel extends AndroidViewModel {
     private final MutableLiveData<Integer> mButtonClicked = new MutableLiveData<>(0);
     public LiveData<Integer> buttonClickedChanged() { return mButtonClicked; }
 
-    private final MutableLiveData<Time> mTime = new MutableLiveData<>(new Time());
-    public LiveData<Time> timeChanged() { return mTime; }
+    private final MutableLiveData<LocalDateTime> mTime = new MutableLiveData<>();
+    public LiveData<LocalDateTime> timeChanged() { return mTime; }
 
     //Services and Characteristics of the SYM Pixl
     private BluetoothGattService timeService = null, symService = null;
@@ -111,6 +116,12 @@ public class BleOperationsViewModel extends AndroidViewModel {
     public boolean writeInteger(int value) {
         if(!isConnected().getValue() || integerChar == null) return false;
         return ble.writeInteger(value);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public boolean writeCurrentTime(LocalDateTime value) {
+        if(!isConnected().getValue() || currentTimeChar == null) return false;
+        return ble.writeCurrentTime(value);
     }
 
     private final ConnectionObserver bleConnectionObserver = new ConnectionObserver() {
@@ -209,7 +220,7 @@ public class BleOperationsViewModel extends AndroidViewModel {
                         );
                         setNotificationCallback(currentTimeChar).with(
                                 (BluetoothDevice b, Data d) ->
-                                        Log.d(TAG, d.getIntValue(Data.FORMAT_UINT16, 0).toString())
+                                        readCurrentTime(d)
                         );
 
                         beginAtomicRequestQueue()
@@ -242,10 +253,6 @@ public class BleOperationsViewModel extends AndroidViewModel {
                         integerChar = null;
                         temperatureChar = null;
                         buttonClickChar = null;
-                    }
-
-                    public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-                        Log.d("testtest", "reee");
                     }
                 };
             }
@@ -304,6 +311,51 @@ public class BleOperationsViewModel extends AndroidViewModel {
             return true;
         }
 
+        // TODO: maybe find a better way
+        @RequiresApi(api = Build.VERSION_CODES.O)
+        public boolean readCurrentTime(Data d) {
+            int year = d.getIntValue(Data.FORMAT_UINT16, 0);
+            int month = d.getIntValue(Data.FORMAT_UINT8, 2);
+            int day = d.getIntValue(Data.FORMAT_UINT8, 3);
+            int hour = d.getIntValue(Data.FORMAT_UINT8, 4);
+            int minutes = d.getIntValue(Data.FORMAT_UINT8, 5);
+            int seconds = d.getIntValue(Data.FORMAT_UINT8, 6);
+            int dayOfWeek = d.getIntValue(Data.FORMAT_UINT8, 7);
+            int milliseconds = d.getIntValue(Data.FORMAT_UINT8, 8);
+            int raison = d.getIntValue(Data.FORMAT_UINT8, 9);
+
+            mTime.setValue(LocalDateTime.of(year, Month.of(month), day, hour, minutes, seconds));
+            return true;
+        }
+
+        // TODO: maybe find a better way
+        @RequiresApi(api = Build.VERSION_CODES.O)
+        public boolean writeCurrentTime(LocalDateTime localDateTime) {
+            String val = Integer.toBinaryString(localDateTime.getYear());
+            int lowerBytes = 0;
+            if(val.length() <= 8)
+                lowerBytes = Integer.parseInt(val, 2);
+            else
+                lowerBytes = Integer.parseInt(val.substring(val.length() - 8), 2);
+            int upperBytes = 0;
+            if(val.length() > 8)
+                upperBytes = Integer.parseInt(val.substring(0, val.length() - 8), 2);
+            Log.d(TAG, String.format("%s", Integer.toBinaryString(localDateTime.getYear())));
+            Data d = new Data(new byte[]{
+                    (byte) lowerBytes,
+                    (byte) upperBytes,
+                    (byte) localDateTime.getMonthValue(),
+                    (byte) localDateTime.getDayOfMonth(),
+                    (byte) localDateTime.getHour(),
+                    (byte) localDateTime.getMinute(),
+                    (byte) localDateTime.getSecond(),
+                    (byte) localDateTime.getDayOfWeek().getValue(),
+                    (byte) 1,
+                    (byte) 0
+            });
+            writeCharacteristic(currentTimeChar, d, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE).enqueue();
+            return true;
+        }
     }
 
 }

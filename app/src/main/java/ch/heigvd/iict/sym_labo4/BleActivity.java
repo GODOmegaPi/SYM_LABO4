@@ -8,6 +8,7 @@ import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.ParcelUuid;
@@ -21,8 +22,10 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import androidx.annotation.RequiresApi;
 import androidx.lifecycle.ViewModelProvider;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -65,6 +68,7 @@ public class BleActivity extends BaseTemplateActivity {
     private Button integerBtn = null;
 
     private TextView time = null;
+    private Button timeBtn = null;
 
     //menu elements
     private MenuItem scanMenuBtn = null;
@@ -77,6 +81,7 @@ public class BleActivity extends BaseTemplateActivity {
     private Handler handler = null;
     private boolean isScanning = false;
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -101,6 +106,7 @@ public class BleActivity extends BaseTemplateActivity {
         this.integer = findViewById(R.id.ble_integer);
         this.integerBtn = findViewById(R.id.ble_integer_btn);
         this.time = findViewById(R.id.ble_time);
+        this.timeBtn = findViewById(R.id.ble_time_btn);
 
         //manage scanned item
         this.scanResultsAdapter = new ResultsAdapter(this);
@@ -129,8 +135,17 @@ public class BleActivity extends BaseTemplateActivity {
         });
 
         this.integerBtn.setOnClickListener(view -> {
-            long value = Long.parseLong(integer.getText().toString());
-            if (this.bleViewModel.writeInteger((int) value)) {
+            if(!integer.getText().toString().isEmpty()) {
+                long value = Long.parseLong(integer.getText().toString());
+                if (value >= 0 && this.bleViewModel.writeInteger((int) value)) {
+                    Log.d(TAG, "written successfully");
+                }
+            }
+        });
+
+        this.timeBtn.setOnClickListener(view -> {
+            LocalDateTime localDateTime = LocalDateTime.now();
+            if (this.bleViewModel.writeCurrentTime(localDateTime)) {
                 Log.d(TAG, "written successfully");
             }
         });
@@ -218,7 +233,7 @@ public class BleActivity extends BaseTemplateActivity {
 
     private void updateTime() {
         this.time.setText(String.format(
-                "Peripheral time: %d",
+                "Peripheral time: %ta %<tb %<te  %<tY  %<tT%n",
                 this.bleViewModel.timeChanged().getValue()
         ));
     }

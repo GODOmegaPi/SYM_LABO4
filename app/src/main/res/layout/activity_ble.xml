@@ -54,7 +54,13 @@
                 android:id="@+id/ble_time"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
+                android:textSize="24sp"
                 android:text="Peripheral time: " />
+            <Button
+                android:id="@+id/ble_time_btn"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="Update peripheral time" />
         </LinearLayout>
 
     </ScrollView>
