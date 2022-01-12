@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
 import android.content.Context;
+import android.text.format.Time;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -52,6 +53,9 @@ public class BleOperationsViewModel extends AndroidViewModel {
 
     private final MutableLiveData<Integer> mButtonClicked = new MutableLiveData<>(0);
     public LiveData<Integer> buttonClickedChanged() { return mButtonClicked; }
+
+    private final MutableLiveData<Time> mTime = new MutableLiveData<>(new Time());
+    public LiveData<Time> timeChanged() { return mTime; }
 
     //Services and Characteristics of the SYM Pixl
     private BluetoothGattService timeService = null, symService = null;
@@ -102,6 +106,11 @@ public class BleOperationsViewModel extends AndroidViewModel {
     public boolean readTemperature() {
         if(!isConnected().getValue() || temperatureChar == null) return false;
         return ble.readTemperature();
+    }
+
+    public boolean writeInteger(int value) {
+        if(!isConnected().getValue() || integerChar == null) return false;
+        return ble.writeInteger(value);
     }
 
     private final ConnectionObserver bleConnectionObserver = new ConnectionObserver() {
@@ -194,20 +203,26 @@ public class BleOperationsViewModel extends AndroidViewModel {
 
                     @Override
                     protected void initialize() {
-                        /*  TODO
-                            Ici nous somme sûr que le périphérique possède bien tous les services et caractéristiques
-                            attendus et que nous y sommes connectés. Nous pouvous effectuer les premiers échanges BLE:
-                            Dans notre cas il s'agit de s'enregistrer pour recevoir les notifications proposées par certaines
-                            caractéristiques, on en profitera aussi pour mettre en place les callbacks correspondants.
-                         */
-                        //mConnection.setCharacteristicNotification(buttonClickChar, true);
-
                         setNotificationCallback(buttonClickChar).with(
                                 (BluetoothDevice b, Data d) ->
-                                        mButtonClicked.setValue(d.getIntValue(Data.FORMAT_SINT8, 0))
+                                        mButtonClicked.setValue(d.getIntValue(Data.FORMAT_UINT8, 0))
                         );
+                        setNotificationCallback(currentTimeChar).with(
+                                (BluetoothDevice b, Data d) ->
+                                        Log.d(TAG, d.getIntValue(Data.FORMAT_UINT16, 0).toString())
+                        );
+
                         beginAtomicRequestQueue()
                                 .add(enableNotifications(buttonClickChar)
+                                        .fail((device, status) -> {
+                                            Log.e(TAG, "Could not subscribe: " + status);
+                                        }))
+                                .done(device -> {
+                                    Log.d(TAG, "Subscribed!");
+                                })
+                                .enqueue();
+                        beginAtomicRequestQueue()
+                                .add(enableNotifications(currentTimeChar)
                                         .fail((device, status) -> {
                                             Log.e(TAG, "Could not subscribe: " + status);
                                         }))
@@ -280,6 +295,12 @@ public class BleOperationsViewModel extends AndroidViewModel {
 
         public boolean notifyButtonClicked() {
             Log.d("testtest", "clicked");
+            return true;
+        }
+
+        public boolean writeInteger(int value) {
+            Data d = new Data(new byte[]{(byte) value});
+            writeCharacteristic(integerChar, d, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE).enqueue();
             return true;
         }
 

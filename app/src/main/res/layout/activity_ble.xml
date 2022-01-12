@@ -29,12 +29,32 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:text="Read temperature" />
+
             <TextView
                 android:id="@+id/ble_clicked_buttons"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:textSize="24sp"
                 android:text="Buttons clicked: " />
+
+            <EditText
+                android:id="@+id/ble_integer"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:ems="10"
+                android:inputType="number"
+                android:hint="Enter a number" />
+            <Button
+                android:id="@+id/ble_integer_btn"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="Send integer" />
+
+            <TextView
+                android:id="@+id/ble_time"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="Peripheral time: " />
         </LinearLayout>
 
     </ScrollView>

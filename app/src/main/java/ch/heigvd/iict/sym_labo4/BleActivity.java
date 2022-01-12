@@ -17,6 +17,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -57,7 +58,13 @@ public class BleActivity extends BaseTemplateActivity {
 
     private TextView temperature = null;
     private Button temperatureButton = null;
+
     private TextView clickedButtons = null;
+
+    private EditText integer = null;
+    private Button integerBtn = null;
+
+    private TextView time = null;
 
     //menu elements
     private MenuItem scanMenuBtn = null;
@@ -91,6 +98,9 @@ public class BleActivity extends BaseTemplateActivity {
         this.temperature = findViewById(R.id.ble_temperature);
         this.temperatureButton = findViewById(R.id.ble_temperature_btn);
         this.clickedButtons = findViewById(R.id.ble_clicked_buttons);
+        this.integer = findViewById(R.id.ble_integer);
+        this.integerBtn = findViewById(R.id.ble_integer_btn);
+        this.time = findViewById(R.id.ble_time);
 
         //manage scanned item
         this.scanResultsAdapter = new ResultsAdapter(this);
@@ -118,10 +128,17 @@ public class BleActivity extends BaseTemplateActivity {
             }
         });
 
+        this.integerBtn.setOnClickListener(view -> {
+            long value = Long.parseLong(integer.getText().toString());
+            if (this.bleViewModel.writeInteger((int) value)) {
+                Log.d(TAG, "written successfully");
+            }
+        });
+
         //ble events
         this.bleViewModel.isConnected().observe(this, (isConnected) -> updateGui());
-
         this.bleViewModel.buttonClickedChanged().observe(this, (clickedButton) -> updateClickedButtons());
+        this.bleViewModel.timeChanged().observe(this, (newTime) -> updateTime());
     }
 
     @Override
@@ -196,6 +213,13 @@ public class BleActivity extends BaseTemplateActivity {
         this.clickedButtons.setText(String.format(
                 "Buttons clicked: %d times",
                 this.bleViewModel.buttonClickedChanged().getValue()
+        ));
+    }
+
+    private void updateTime() {
+        this.time.setText(String.format(
+                "Peripheral time: %d",
+                this.bleViewModel.timeChanged().getValue()
         ));
     }
 
