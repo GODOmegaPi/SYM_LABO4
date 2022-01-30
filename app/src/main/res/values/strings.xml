@@ -17,5 +17,12 @@
 
     <string name="ble_sendvalue_title">Envoi de valeur</string>
     <string name="ble_sendvalue_send">Send</string>
+    <string name="ble_temperature">Temperature:</string>
+    <string name="ble_temperature_btn">Read temperature</string>
+    <string name="ble_clicked_buttons">Buttons clicked:</string>
+    <string name="ble_integer">Enter a number</string>
+    <string name="ble_integer_btn">Send integer</string>
+    <string name="ble_time">Peripheral time:</string>
+    <string name="ble_time_btn">Update peripheral time</string>
 
 </resources>

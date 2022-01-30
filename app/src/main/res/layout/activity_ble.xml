@@ -17,25 +17,24 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- TODO vous placerez dans ce layout toutes les vues nécessaires aux intéractions avec le périphérique BLE -->
             <TextView
                 android:id="@+id/ble_temperature"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:textSize="24sp"
-                android:text="Temperature: " />
+                android:text="@string/ble_temperature" />
             <Button
                 android:id="@+id/ble_temperature_btn"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:text="Read temperature" />
+                android:text="@string/ble_temperature_btn" />
 
             <TextView
                 android:id="@+id/ble_clicked_buttons"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:textSize="24sp"
-                android:text="Buttons clicked: " />
+                android:text="@string/ble_clicked_buttons" />
 
             <EditText
                 android:id="@+id/ble_integer"
@@ -43,24 +42,24 @@
                 android:layout_height="match_parent"
                 android:ems="10"
                 android:inputType="number"
-                android:hint="Enter a number" />
+                android:hint="@string/ble_integer" />
             <Button
                 android:id="@+id/ble_integer_btn"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:text="Send integer" />
+                android:text="@string/ble_integer_btn" />
 
             <TextView
                 android:id="@+id/ble_time"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:textSize="24sp"
-                android:text="Peripheral time: " />
+                android:text="@string/ble_time" />
             <Button
                 android:id="@+id/ble_time_btn"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:text="Update peripheral time" />
+                android:text="@string/ble_time_btn" />
         </LinearLayout>
 
     </ScrollView>

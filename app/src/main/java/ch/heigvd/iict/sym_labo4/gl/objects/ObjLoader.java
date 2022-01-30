@@ -145,8 +145,7 @@ public class ObjLoader{
 		for(int i = 0; i < ind.length; ++i){
 			ind[i] -= min;
 		}
-		
-		//TODO use a real material
+
 		float[] color = mat.getKd();
 		
 		for(int i = 0; i < colors.length; ++i){

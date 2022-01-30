@@ -1,14 +1,12 @@
 package ch.heigvd.iict.sym_labo4.viewmodels;
 
 import android.app.Application;
-import android.app.Service;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
 import android.content.Context;
 import android.os.Build;
-import android.text.format.Time;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -19,18 +17,13 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.time.LocalDateTime;
 import java.time.Month;
-import java.util.Arrays;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.time.ZoneId;
 import java.util.UUID;
 
 import no.nordicsemi.android.ble.BleManager;
-import no.nordicsemi.android.ble.ReadRequest;
-import no.nordicsemi.android.ble.ValueChangedCallback;
-import no.nordicsemi.android.ble.callback.FailCallback;
-import no.nordicsemi.android.ble.callback.SuccessCallback;
 import no.nordicsemi.android.ble.data.Data;
 import no.nordicsemi.android.ble.observer.ConnectionObserver;
 
@@ -102,12 +95,6 @@ public class BleOperationsViewModel extends AndroidViewModel {
         }
     }
 
-    /* TODO
-        vous pouvez placer ici les différentes méthodes permettant à l'utilisateur
-        d'interagir avec le périphérique depuis l'activité
-     */
-
-    // FIXME I have no idea on how to use this
     public boolean readTemperature() {
         if(!isConnected().getValue() || temperatureChar == null) return false;
         return ble.readTemperature();
@@ -186,21 +173,13 @@ public class BleOperationsViewModel extends AndroidViewModel {
                     @Override
                     public boolean isRequiredServiceSupported(@NonNull final BluetoothGatt gatt) {
                         mConnection = gatt; //trick to force disconnection
-                        Log.d(TAG, "isRequiredServiceSupported - TODO");
-
-                        /* TODO
-                        - Nous devons vérifier ici que le périphérique auquel on vient de se connecter possède
-                          bien tous les services et les caractéristiques attendues, on vérifiera aussi que les
-                          caractéristiques présentent bien les opérations attendues
-                        - On en profitera aussi pour garder les références vers les différents services et
-                          caractéristiques (déclarés en lignes 40 et 41)
-                        */
 
                         boolean hasTimeService = hasServiceAndCharacteristics(gatt, timeServiceShortUUID, timeServiceCharacteristicShortUUID, false);
                         if (hasTimeService) {
                             timeService = gatt.getService(UUID.fromString(getLongUUIDStandard(timeServiceShortUUID)));
                             currentTimeChar = timeService.getCharacteristic(UUID.fromString(getLongUUIDStandard(timeServiceCharacteristicShortUUID[0])));
                         }
+
                         boolean hasSymService = hasServiceAndCharacteristics(gatt, symServiceShort, symServiceCharacteristicShortUUID, true);
                         if (hasSymService) {
                             symService = gatt.getService(UUID.fromString(getLongUUIDSYM(symServiceShort)));
@@ -212,6 +191,7 @@ public class BleOperationsViewModel extends AndroidViewModel {
                         return hasTimeService && hasSymService;
                     }
 
+                    @RequiresApi(api = Build.VERSION_CODES.O)
                     @Override
                     protected void initialize() {
                         setNotificationCallback(buttonClickChar).with(
@@ -300,60 +280,75 @@ public class BleOperationsViewModel extends AndroidViewModel {
             return true;
         }
 
-        public boolean notifyButtonClicked() {
-            Log.d("testtest", "clicked");
-            return true;
-        }
-
         public boolean writeInteger(int value) {
-            Data d = new Data(new byte[]{(byte) value});
-            writeCharacteristic(integerChar, d, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE).enqueue();
+            // Transform int 32 bit BE to int 32 bits LE
+            ByteBuffer bb = ByteBuffer.wrap(new byte[]{(byte) value});
+            bb.order(ByteOrder.LITTLE_ENDIAN);
+
+            Data data = new Data(bb.array());
+            writeCharacteristic(integerChar, data, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE).enqueue();
             return true;
         }
 
-        // TODO: maybe find a better way
         @RequiresApi(api = Build.VERSION_CODES.O)
-        public boolean readCurrentTime(Data d) {
-            int year = d.getIntValue(Data.FORMAT_UINT16, 0);
-            int month = d.getIntValue(Data.FORMAT_UINT8, 2);
-            int day = d.getIntValue(Data.FORMAT_UINT8, 3);
-            int hour = d.getIntValue(Data.FORMAT_UINT8, 4);
-            int minutes = d.getIntValue(Data.FORMAT_UINT8, 5);
-            int seconds = d.getIntValue(Data.FORMAT_UINT8, 6);
-            int dayOfWeek = d.getIntValue(Data.FORMAT_UINT8, 7);
-            int milliseconds = d.getIntValue(Data.FORMAT_UINT8, 8);
-            int raison = d.getIntValue(Data.FORMAT_UINT8, 9);
+        public void readCurrentTime(Data d) {
+            int year = 0, month = 0, day = 0, hour = 0, minutes = 0,
+                    seconds = 0, dayOfWeek = 0, fractions256 = 0, raison = 0;
+
+            // Here we only use what the constructor of LocalDateTime can take as arguments
+            try {
+                year = d.getIntValue(Data.FORMAT_UINT16, 0);
+                month = d.getIntValue(Data.FORMAT_UINT8, 2);
+                day = d.getIntValue(Data.FORMAT_UINT8, 3);
+                hour = d.getIntValue(Data.FORMAT_UINT8, 4);
+                minutes = d.getIntValue(Data.FORMAT_UINT8, 5);
+                seconds = d.getIntValue(Data.FORMAT_UINT8, 6);
+                dayOfWeek = d.getIntValue(Data.FORMAT_UINT8, 7);
+                fractions256 = d.getIntValue(Data.FORMAT_UINT8, 8);
+                raison = d.getIntValue(Data.FORMAT_UINT8, 9);
+            } catch (NullPointerException e) {
+                Log.d(TAG, e.getMessage());
+            }
 
             mTime.setValue(LocalDateTime.of(year, Month.of(month), day, hour, minutes, seconds));
-            return true;
         }
 
-        // TODO: maybe find a better way
         @RequiresApi(api = Build.VERSION_CODES.O)
         public boolean writeCurrentTime(LocalDateTime localDateTime) {
-            String val = Integer.toBinaryString(localDateTime.getYear());
-            int lowerBytes = 0;
-            if(val.length() <= 8)
-                lowerBytes = Integer.parseInt(val, 2);
+            // Transform the year value to a string of bits
+            String year = Integer.toBinaryString(localDateTime.getYear());
+
+            // Take the lower parts of the bits
+            int lowerBits;
+            if(year.length() <= 8)
+                lowerBits = Integer.parseInt(year, 2);
             else
-                lowerBytes = Integer.parseInt(val.substring(val.length() - 8), 2);
-            int upperBytes = 0;
-            if(val.length() > 8)
-                upperBytes = Integer.parseInt(val.substring(0, val.length() - 8), 2);
-            Log.d(TAG, String.format("%s", Integer.toBinaryString(localDateTime.getYear())));
-            Data d = new Data(new byte[]{
-                    (byte) lowerBytes,
-                    (byte) upperBytes,
+                lowerBits = Integer.parseInt(year.substring(year.length() - 8), 2);
+
+            // Take the upper part of the bits
+            int upperBits = 0;
+            if(year.length() > 8)
+                upperBits = Integer.parseInt(year.substring(0, year.length() - 8), 2);
+
+            // Calculate the fraction number
+            int fractions256 = (int)
+                    (localDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                    * 256);
+
+            Data newTime = new Data(new byte[]{
+                    (byte) lowerBits,
+                    (byte) upperBits,
                     (byte) localDateTime.getMonthValue(),
                     (byte) localDateTime.getDayOfMonth(),
                     (byte) localDateTime.getHour(),
                     (byte) localDateTime.getMinute(),
                     (byte) localDateTime.getSecond(),
                     (byte) localDateTime.getDayOfWeek().getValue(),
-                    (byte) 1,
-                    (byte) 0
+                    (byte) fractions256,
+                    (byte) 0x03,
             });
-            writeCharacteristic(currentTimeChar, d, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE).enqueue();
+
+            writeCharacteristic(currentTimeChar, newTime, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE).enqueue();
             return true;
         }
     }
