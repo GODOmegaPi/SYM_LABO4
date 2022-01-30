@@ -275,7 +275,7 @@ public class BleOperationsViewModel extends AndroidViewModel {
         public boolean readTemperature() {
             readCharacteristic(temperatureChar).with(
                     (BluetoothDevice b, Data d) ->
-                    mTemperature.setValue(d.getIntValue(Data.FORMAT_UINT16, 0))
+                        mTemperature.setValue(d.getIntValue(Data.FORMAT_UINT16, 0))
             ).enqueue();
             return true;
         }
