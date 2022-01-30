@@ -37,7 +37,7 @@ import ch.heigvd.iict.sym_labo4.viewmodels.BleOperationsViewModel;
 /**
  * Project: Labo4
  * Created by fabien.dutoit on 11.05.2019
- * Updated by fabien.dutoit on 06.11.2020
+ * Updated by Guillaume Laubscher, Ilias Goujgali, Eric Bousbaa on 30.01.2022
  * (C) 2019 - HEIG-VD, IICT
  */
 public class BleActivity extends BaseTemplateActivity {
@@ -217,6 +217,9 @@ public class BleActivity extends BaseTemplateActivity {
         }
     }
 
+    /**
+     * Update the GUI with new temperature info
+     */
     private void updateTemperature() {
         this.temperature.setText(String.format(
                 "Temperature: %.1f°C",
@@ -224,6 +227,9 @@ public class BleActivity extends BaseTemplateActivity {
         );
     }
 
+    /**
+     * Update the GUI with new number of buttons pressed
+     */
     private void updateClickedButtons() {
         this.clickedButtons.setText(String.format(
                 "Buttons clicked: %d times",
@@ -231,6 +237,9 @@ public class BleActivity extends BaseTemplateActivity {
         ));
     }
 
+    /**
+     * Update the GUI with new time
+     */
     private void updateTime() {
         this.time.setText(String.format(
                 "Peripheral time: %ta %<tb %<te  %<tY  %<tT%n",

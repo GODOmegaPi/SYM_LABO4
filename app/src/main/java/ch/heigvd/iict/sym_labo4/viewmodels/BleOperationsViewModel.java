@@ -30,7 +30,7 @@ import no.nordicsemi.android.ble.observer.ConnectionObserver;
 /**
  * Project: Labo4
  * Created by fabien.dutoit on 11.05.2019
- * Updated by fabien.dutoit on 19.10.2021
+ * Updated by Guillaume Laubscher, Ilias Goujgali, Eric Bousbaa on 30.01.2022
  * (C) 2019 - HEIG-VD, IICT
  */
 public class BleOperationsViewModel extends AndroidViewModel {
@@ -59,6 +59,7 @@ public class BleOperationsViewModel extends AndroidViewModel {
     private BluetoothGattService timeService = null, symService = null;
     private BluetoothGattCharacteristic currentTimeChar = null, integerChar = null, temperatureChar = null, buttonClickChar = null;
 
+    // Known UUID from services and characteristics
     private final String timeServiceShortUUID = "1805";
     private final String[] timeServiceCharacteristicShortUUID = {"2a2b"};
     private final String symServiceShort = "1000";
@@ -174,12 +175,14 @@ public class BleOperationsViewModel extends AndroidViewModel {
                     public boolean isRequiredServiceSupported(@NonNull final BluetoothGatt gatt) {
                         mConnection = gatt; //trick to force disconnection
 
+                        // Initiate time service
                         boolean hasTimeService = hasServiceAndCharacteristics(gatt, timeServiceShortUUID, timeServiceCharacteristicShortUUID, false);
                         if (hasTimeService) {
                             timeService = gatt.getService(UUID.fromString(getLongUUIDStandard(timeServiceShortUUID)));
                             currentTimeChar = timeService.getCharacteristic(UUID.fromString(getLongUUIDStandard(timeServiceCharacteristicShortUUID[0])));
                         }
 
+                        // Initiate custom SYM service
                         boolean hasSymService = hasServiceAndCharacteristics(gatt, symServiceShort, symServiceCharacteristicShortUUID, true);
                         if (hasSymService) {
                             symService = gatt.getService(UUID.fromString(getLongUUIDSYM(symServiceShort)));
@@ -239,14 +242,32 @@ public class BleOperationsViewModel extends AndroidViewModel {
             return mGattCallback;
         }
 
+        /**
+         * Transform short UUID to long UUID
+         * @param shortUUID the short UUID to be transformed
+         * @return the long UUID from the short one
+         */
         private String getLongUUIDStandard(String shortUUID) {
             return String.format("0000%s-0000-1000-8000-00805f9b34fb", shortUUID);
         }
 
+        /**
+         * Transform short UUID to long UUID (specific to SYM service)
+         * @param shortUUID the short UUID to be transformed
+         * @return the long UUID from the short one
+         */
         private String getLongUUIDSYM(String shortUUID) {
             return String.format("3c0a%s-281d-4b48-b2a7-f15579a1c38f", shortUUID);
         }
 
+        /**
+         * Check if the service and his characteristics exist
+         * @param services Gatt service
+         * @param shortServiceUUID UUID of the service to be checked
+         * @param shortCharacteristicsUUID UUIDs of the characteristics related to the service to be checked
+         * @param symService if it's a custom SYM service or not
+         * @return if everything was find
+         */
         private boolean hasServiceAndCharacteristics(BluetoothGatt services, String shortServiceUUID, String[] shortCharacteristicsUUID, boolean symService) {
             boolean hasService = false;
             for (BluetoothGattService s : services.getServices()) {

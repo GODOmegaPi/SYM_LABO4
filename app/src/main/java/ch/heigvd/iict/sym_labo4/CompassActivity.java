@@ -18,6 +18,12 @@ import java.util.logging.Logger;
 
 import ch.heigvd.iict.sym_labo4.gl.OpenGLRenderer;
 
+/**
+ * Project: Labo4
+ * Created by fabien.dutoit on 11.05.2019
+ * Updated by Guillaume Laubscher, Ilias Goujgali, Eric Bousbaa on 30.01.2022
+ * (C) 2019 - HEIG-VD, IICT
+ */
 public class CompassActivity extends AppCompatActivity implements SensorEventListener {
 
     // Opengl
